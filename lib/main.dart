@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth/welcome_screen.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,11 +23,8 @@ class HomeFoodMarketplace extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Home Food Marketplace',
-      theme: ThemeData(
-        colorSchemeSeed: Colors.orange,
-        useMaterial3: true,
-      ),
-      home: WelcomeScreen(),
+      theme: AppTheme.lightTheme,
+      home: const WelcomeScreen(),
     );
   }
 }
