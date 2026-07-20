@@ -1,6 +1,6 @@
 {
-    "name": "home_food_marketplace",
-    "short_name": "home_food_marketplace",
+    "name": "HomeEats",
+    "short_name": "HomeEats",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
