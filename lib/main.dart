@@ -12,17 +12,17 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const HomeFoodMarketplace());
+  runApp(const HomeEatsApp());
 }
 
-class HomeFoodMarketplace extends StatelessWidget {
-  const HomeFoodMarketplace({super.key});
+class HomeEatsApp extends StatelessWidget {
+  const HomeEatsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Home Food Marketplace',
+      title: 'HomeEats',
       theme: AppTheme.lightTheme,
       home: const WelcomeScreen(),
     );

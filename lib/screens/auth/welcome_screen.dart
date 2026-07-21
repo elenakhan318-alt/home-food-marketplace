@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../cook/cook_dashboard_screen.dart';
-import '../customer/customer_main_screen.dart';
+import 'login_screen.dart';
+import 'register_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -26,7 +26,7 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               const Text(
-                'Home Food Marketplace',
+                'HomeEats',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 30,
@@ -46,14 +46,14 @@ class WelcomeScreen extends StatelessWidget {
 
               FilledButton(
                 onPressed: () {
-                  Navigator.pushReplacement(
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CustomerMainScreen(),
+                      builder: (context) => const RegisterScreen(),
                     ),
                   );
                 },
-                child: const Text('Continue as Customer'),
+                child: const Text('Create an account'),
               ),
 
               const SizedBox(height: 12),
@@ -63,20 +63,11 @@ class WelcomeScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CookDashboardScreen(),
+                      builder: (context) => const LoginScreen(),
                     ),
                   );
                 },
-                child: const Text('Become a Home Cook'),
-              ),
-
-              const SizedBox(height: 12),
-
-              TextButton(
-                onPressed: () {
-                  // Sign in screen will be added later.
-                },
-                child: const Text('Already have an account? Sign in'),
+                child: const Text('Sign in'),
               ),
             ],
           ),
