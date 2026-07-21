@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
@@ -12,10 +13,19 @@ class CookDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Cook Dashboard'),
-        centerTitle: true,
-      ),
+ appBar: AppBar(
+  title: const Text('Cook Dashboard'),
+  centerTitle: true,
+  actions: [
+    IconButton(
+      tooltip: 'Sign out',
+      icon: const Icon(Icons.logout),
+      onPressed: () async {
+        await FirebaseAuth.instance.signOut();
+      },
+    ),
+  ],
+),
       floatingActionButton: FloatingActionButton.extended(
    onPressed: () {
   Navigator.push(
