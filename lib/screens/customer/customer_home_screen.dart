@@ -1,9 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_radius.dart';
 import '../../theme/app_spacing.dart';
-import '../../widgets/meal_card.dart';
 import 'meal_details_screen.dart';
 import 'search_screen.dart';
 
@@ -15,51 +15,19 @@ class CustomerHomeScreen extends StatefulWidget {
 }
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
-  int _selectedNavigationIndex = 0;
   bool _isDeliverySelected = true;
 
   void _showTemporaryMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 2),
+        ),
       );
   }
 
-  void _showCategory(String category) {
-    _showTemporaryMessage('$category meals will open here.');
-  }
-  void _showMeal(String mealName) {
-  _showTemporaryMessage('$mealName details will open here.');
-}
-
-void _changeNavigationPage(int index) {
-  if (index == 0) {
-    setState(() {
-      _selectedNavigationIndex = 0;
-    });
-    return;
-  }
-
-  if (index == 1) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const SearchScreen(),
-      ),
-    );
-    return;
-  }
-
-  if (index == 2) {
-    _showTemporaryMessage('Basket tab connection coming next.');
-    return;
-  }
-
-  if (index == 3) {
-    _showTemporaryMessage('Profile page coming next.');
-  }
-}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,7 +38,7 @@ void _changeNavigationPage(int index) {
             padding: const EdgeInsets.only(
               left: AppSpacing.page,
               right: AppSpacing.page,
-              bottom: 110,
+              bottom: 40,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,11 +55,9 @@ void _changeNavigationPage(int index) {
                 const SizedBox(height: AppSpacing.large),
                 _buildPromotionBanner(),
                 const SizedBox(height: AppSpacing.section),
-                _buildMealsOfTheDay(),
+                _buildLiveMeals(),
                 const SizedBox(height: AppSpacing.section),
                 _buildCuisineSection(),
-                const SizedBox(height: AppSpacing.section),
-                _buildPopularMeals(),
                 const SizedBox(height: AppSpacing.section),
                 _buildCookSpotlight(),
               ],
@@ -101,24 +67,18 @@ void _changeNavigationPage(int index) {
       ),
     );
   }
-Widget _buildTopBar() {
+
+  Widget _buildTopBar() {
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.small),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () {
-              Navigator.maybePop(context);
-            },
-            icon: const Icon(Icons.arrow_back_rounded),
-          ),
-          const SizedBox(width: AppSpacing.small),
           Text(
             'Home',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
           ),
           const Spacer(),
           IconButton(
@@ -145,7 +105,11 @@ Widget _buildTopBar() {
         ),
         child: Row(
           children: [
-            Icon(Icons.location_on_rounded, color: AppColors.primary, size: 24),
+            Icon(
+              Icons.location_on_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
             SizedBox(width: AppSpacing.small),
             Expanded(
               child: Column(
@@ -181,20 +145,35 @@ Widget _buildTopBar() {
   }
 
   Widget _buildGreeting() {
+    final hour = DateTime.now().hour;
+
+    String greeting;
+
+    if (hour < 12) {
+      greeting = 'Good morning';
+    } else if (hour < 18) {
+      greeting = 'Good afternoon';
+    } else {
+      greeting = 'Good evening';
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Good evening 👋',
+          '$greeting 👋',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w800,
-          ),
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
         ),
         const SizedBox(height: AppSpacing.small),
         const Text(
           'What are you craving today?',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 15,
+          ),
         ),
       ],
     );
@@ -258,7 +237,9 @@ Widget _buildTopBar() {
               Icon(
                 icon,
                 size: 18,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
               ),
               const SizedBox(width: AppSpacing.small),
               Text(
@@ -281,7 +262,12 @@ Widget _buildTopBar() {
     return TextField(
       readOnly: true,
       onTap: () {
-        _showTemporaryMessage('Meal search will open here.');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SearchScreen(),
+          ),
+        );
       },
       decoration: const InputDecoration(
         hintText: 'Search meals, cooks or cuisines',
@@ -293,21 +279,17 @@ Widget _buildTopBar() {
   Widget _buildPromotionBanner() {
     return Container(
       width: double.infinity,
-      height: 225,
+      height: 235,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFC85E32), Color(0xFFEDA16C)],
+          colors: [
+            Color(0xFFC85E32),
+            Color(0xFFEDA16C),
+          ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(AppRadius.card),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Stack(
         children: [
@@ -343,12 +325,17 @@ Widget _buildTopBar() {
                 const SizedBox(height: AppSpacing.small),
                 const Text(
                   'Freshly prepared by trusted local cooks.',
-                  style: TextStyle(color: Colors.white, fontSize: 13),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.regular),
+                const SizedBox(height: AppSpacing.small),
                 FilledButton(
                   onPressed: () {
-                    _showTemporaryMessage('Browse meals will open here.');
+                    _showTemporaryMessage(
+                      'Available meals are shown below.',
+                    );
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.secondary,
@@ -364,34 +351,302 @@ Widget _buildTopBar() {
     );
   }
 
-  Widget _buildMealsOfTheDay() {
-    const mealTimes = [('🍳', 'Breakfast'), ('🥪', 'Lunch'), ('🍽️', 'Dinner')];
-
+  Widget _buildLiveMeals() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeading(
-          title: 'Meals of the Day',
-          subtitle: 'Find something for any time of day',
-          onViewAll: () {
-            _showTemporaryMessage('All meal times will open here.');
+          title: 'Available Near You',
+          subtitle: 'All meals currently available',
+        ),
+        const SizedBox(height: AppSpacing.regular),
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('meals')
+              .where('active', isEqualTo: true)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return _buildMessageCard(
+                icon: Icons.error_outline_rounded,
+                title: 'Meals could not be loaded',
+                message: snapshot.error.toString(),
+              );
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.large),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            final meals = snapshot.data?.docs.where((document) {
+                  final data = document.data();
+
+                  final remainingValue =
+                      data['remainingPortions'] ?? data['portions'];
+
+                  final remainingPortions = remainingValue is num
+                      ? remainingValue.toInt()
+                      : int.tryParse(
+                            remainingValue?.toString() ?? '',
+                          ) ??
+                          0;
+
+                  return remainingPortions > 0;
+                }).toList() ??
+                [];
+
+            meals.sort((first, second) {
+              final firstTimestamp =
+                  first.data()['createdAt'] as Timestamp?;
+
+              final secondTimestamp =
+                  second.data()['createdAt'] as Timestamp?;
+
+              if (firstTimestamp == null &&
+                  secondTimestamp == null) {
+                return 0;
+              }
+
+              if (firstTimestamp == null) {
+                return 1;
+              }
+
+              if (secondTimestamp == null) {
+                return -1;
+              }
+
+              return secondTimestamp.compareTo(firstTimestamp);
+            });
+
+            if (meals.isEmpty) {
+              return _buildMessageCard(
+                icon: Icons.restaurant_menu_rounded,
+                title: 'No meals available',
+                message:
+                    'There are currently no meals with portions remaining.',
+              );
+            }
+
+            return Column(
+              children: [
+                for (var index = 0;
+                    index < meals.length;
+                    index++) ...[
+                  _buildMealCard(
+                    mealId: meals[index].id,
+                    data: meals[index].data(),
+                  ),
+                  if (index < meals.length - 1)
+                    const SizedBox(
+                      height: AppSpacing.regular,
+                    ),
+                ],
+              ],
+            );
           },
         ),
-        const SizedBox(height: AppSpacing.medium),
-        Wrap(
-          spacing: AppSpacing.small,
-          runSpacing: AppSpacing.small,
-          children: mealTimes.map((mealTime) {
-            return ActionChip(
-              avatar: Text(mealTime.$1),
-              label: Text(mealTime.$2),
-              onPressed: () {
-                _showCategory(mealTime.$2);
-              },
-            );
-          }).toList(),
-        ),
       ],
+    );
+  }
+
+  Widget _buildMealCard({
+    required String mealId,
+    required Map<String, dynamic> data,
+  }) {
+    final mealName =
+        data['mealName']?.toString() ?? 'Unnamed meal';
+
+    final priceValue = data['price'];
+
+    final price = priceValue is num
+        ? priceValue.toDouble()
+        : double.tryParse(priceValue?.toString() ?? '') ?? 0;
+
+    final portionsValue =
+        data['remainingPortions'] ?? data['portions'];
+
+    final portions = portionsValue is num
+        ? portionsValue.toInt()
+        : int.tryParse(portionsValue?.toString() ?? '') ?? 0;
+
+    final readyTime =
+        data['readyTimeLabel']?.toString() ?? 'Time not set';
+
+    final ingredientsText =
+        data['ingredients']?.toString() ?? '';
+
+    final allergensText =
+        data['allergens']?.toString() ?? 'None';
+
+    final ingredients = ingredientsText
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+
+    final allergens = allergensText
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+
+    final deliveryAvailable =
+        data['deliveryAvailable'] == true;
+
+    final collectionAvailable =
+        data['collectionAvailable'] == true;
+
+    final fulfilmentOptions = <String>[];
+
+    if (deliveryAvailable) {
+      fulfilmentOptions.add('Delivery');
+    }
+
+    if (collectionAvailable) {
+      fulfilmentOptions.add('Collection');
+    }
+
+    final fulfilmentText = fulfilmentOptions.isEmpty
+        ? 'Fulfilment not specified'
+        : fulfilmentOptions.join(' • ');
+
+    const placeholderImage =
+        'https://images.unsplash.com/photo-1547592180-85f173990554'
+        '?auto=format&fit=crop&w=1200&q=80';
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MealDetailsScreen(
+                mealName: mealName,
+                cookName: 'HomeEats Cook',
+                price: '£${price.toStringAsFixed(2)}',
+                rating: 5.0,
+                reviewCount: 0,
+                deliveryText:
+                    '$fulfilmentText • Ready $readyTime',
+                emoji: '🍽️',
+                imageUrl: placeholderImage,
+                description:
+                    'A freshly prepared homemade meal available through HomeEats.',
+                ingredients: ingredients.isEmpty
+                    ? const ['See cook for ingredients']
+                    : ingredients,
+                allergens: allergens.isEmpty
+                    ? const ['None listed']
+                    : allergens,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.regular),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(
+                    AppRadius.medium,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.restaurant_rounded,
+                  color: AppColors.primary,
+                  size: 42,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.regular),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            mealName,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '£${price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      '$portions portions available',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Ready from $readyTime',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      fulfilmentText,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'View meal details',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -413,9 +668,6 @@ Widget _buildTopBar() {
         _buildSectionHeading(
           title: 'Browse by Cuisine',
           subtitle: 'Discover authentic flavours near you',
-          onViewAll: () {
-            _showTemporaryMessage('All cuisines will open here.');
-          },
         ),
         const SizedBox(height: AppSpacing.medium),
         Wrap(
@@ -426,107 +678,12 @@ Widget _buildTopBar() {
               avatar: Text(cuisine.$1),
               label: Text(cuisine.$2),
               onPressed: () {
-                _showCategory(cuisine.$2);
+                _showTemporaryMessage(
+                  '${cuisine.$2} filtering is coming next.',
+                );
               },
             );
           }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPopularMeals() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeading(
-          title: 'Popular Near You',
-          subtitle: 'Meals customers in Birmingham love',
-          onViewAll: () {
-            _showTemporaryMessage('Popular meals will open here.');
-          },
-        ),
-        const SizedBox(height: AppSpacing.regular),
-        SizedBox(
-          height: 390,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              MealCard(
-                mealName: 'Chicken Biryani',
-                cookName: "Amina's Kitchen",
-                price: '£9.95',
-                rating: 4.9,
-                reviewCount: 128,
-                deliveryText: 'Delivery • 25 mins',
-                emoji: '🍛',
-                imageUrl:
-                    'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=900&q=80',
-  onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const MealDetailsScreen(
-        mealName: 'Chicken Biryani',
-        cookName: "Amina's Kitchen",
-        price: '£9.95',
-        rating: 4.9,
-        reviewCount: 128,
-        deliveryText: 'Delivery • 25 mins',
-        emoji: '🍛',
-        imageUrl:
-            'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=1200&q=80',
-        description:
-            'A fragrant homemade chicken biryani prepared with tender chicken, basmati rice, warming spices and fresh herbs. Served fresh by a trusted local cook.',
-        ingredients: [
-          'Chicken',
-          'Basmati rice',
-          'Onion',
-          'Tomato',
-          'Yoghurt',
-          'Fresh herbs',
-          'Biryani spices',
-        ],
-        allergens: [
-          'Milk',
-        ],
-      ),
-    ),
-  );
-},
-),        
-              const SizedBox(width: 14),
-              MealCard(
-                mealName: 'Caribbean Jerk Chicken',
-                cookName: "Carla's Kitchen",
-                price: '£8.95',
-                rating: 4.8,
-                reviewCount: 96,
-                deliveryText: 'Delivery • 30 mins',
-                emoji: '🍗',
-                imageUrl:
-                    'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
-                onTap: () {
-                  _showMeal('Caribbean Jerk Chicken');
-                },
-              ),
-              const SizedBox(width: 14),
-              MealCard(
-                mealName: 'Mediterranean Salad',
-                cookName: "Layla's Table",
-                price: '£7.50',
-                rating: 4.7,
-                reviewCount: 74,
-                deliveryText: 'Delivery • 20 mins',
-                emoji: '🥗',
-                imageUrl:
-                    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80',
-                onTap: () {
-                  _showMeal('Mediterranean Salad');
-                },
-              ),
-            ],
-          ),
         ),
       ],
     );
@@ -538,10 +695,7 @@ Widget _buildTopBar() {
       children: [
         _buildSectionHeading(
           title: 'Cook Spotlight',
-          subtitle: 'Meet one of our trusted local cooks',
-          onViewAll: () {
-            _showTemporaryMessage('Cook profiles will open here.');
-          },
+          subtitle: 'Meet trusted local HomeEats cooks',
         ),
         const SizedBox(height: AppSpacing.regular),
         Container(
@@ -551,28 +705,24 @@ Widget _buildTopBar() {
             color: Colors.white,
             borderRadius: BorderRadius.circular(AppRadius.card),
           ),
-          child: Row(
+          child: const Row(
             children: [
-              Container(
-                width: 62,
-                height: 62,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryLight,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
+              CircleAvatar(
+                radius: 31,
+                backgroundColor: AppColors.primaryLight,
+                child: Icon(
                   Icons.person_rounded,
                   size: 34,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: AppSpacing.regular),
-              const Expanded(
+              SizedBox(width: AppSpacing.regular),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Amina's Kitchen",
+                      'Local HomeEats cooks',
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 16,
@@ -581,39 +731,14 @@ Widget _buildTopBar() {
                     ),
                     SizedBox(height: 5),
                     Text(
-                      'Pakistani home cooking',
+                      'Fresh homemade food prepared near you',
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
                       ),
                     ),
-                    SizedBox(height: 7),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.star_rounded,
-                          size: 18,
-                          color: AppColors.rating,
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          '4.9 · 128 reviews',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
-              ),
-              IconButton(
-                onPressed: () {
-                  _showTemporaryMessage("Amina's profile will open here.");
-                },
-                icon: const Icon(Icons.arrow_forward_ios_rounded),
               ),
             ],
           ),
@@ -625,63 +750,69 @@ Widget _buildTopBar() {
   Widget _buildSectionHeading({
     required String title,
     required String subtitle,
-    required VoidCallback onViewAll,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                ),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
               ),
-              const SizedBox(height: 5),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ],
+        ),
+        const SizedBox(height: 5),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
           ),
         ),
-        TextButton(onPressed: onViewAll, child: const Text('View all')),
       ],
     );
   }
 
-Widget _buildBottomNavigation() {
-  return NavigationBar(
-    selectedIndex: _selectedNavigationIndex,
-    onDestinationSelected: _changeNavigationPage,
-    destinations: const [
-      NavigationDestination(
-        icon: Icon(Icons.home_outlined),
-        selectedIcon: Icon(Icons.home_rounded),
-        label: 'Home',
+  Widget _buildMessageCard({
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.large),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
-      NavigationDestination(
-        icon: Icon(Icons.search_rounded),
-        label: 'Search',
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: 42,
+            color: AppColors.primary,
+          ),
+          const SizedBox(height: AppSpacing.small),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
-      NavigationDestination(
-        icon: Icon(Icons.shopping_basket_outlined),
-        selectedIcon: Icon(Icons.shopping_basket_rounded),
-        label: 'Basket',
-      ),
-      NavigationDestination(
-        icon: Icon(Icons.person_outline_rounded),
-        selectedIcon: Icon(Icons.person_rounded),
-        label: 'Profile',
-      ),
-    ],
-  );
-}
+    );
+  }
 }

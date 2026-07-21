@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -11,30 +12,32 @@ class CookDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       backgroundColor: AppColors.background,
- appBar: AppBar(
-  title: const Text('Cook Dashboard'),
-  centerTitle: true,
-  actions: [
-    IconButton(
-      tooltip: 'Sign out',
-      icon: const Icon(Icons.logout),
-      onPressed: () async {
-        await FirebaseAuth.instance.signOut();
-      },
-    ),
-  ],
-),
+      appBar: AppBar(
+        title: const Text('Cook Dashboard'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+            },
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
-   onPressed: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const AddTodayMealScreen(),
-    ),
-  );
-},
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddTodayMealScreen(),
+            ),
+          );
+        },
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Today’s Meal'),
       ),
@@ -72,7 +75,7 @@ class CookDashboardScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.large),
               _buildSectionTitle('Today’s Meals'),
               const SizedBox(height: AppSpacing.regular),
-              _buildMealCard(),
+              _buildMealsSection(user),
               const SizedBox(height: AppSpacing.large),
               _buildSectionTitle('Incoming Orders'),
               const SizedBox(height: AppSpacing.regular),
@@ -81,6 +84,85 @@ class CookDashboardScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMealsSection(User? user) {
+    if (user == null) {
+      return _buildMessageCard(
+        icon: Icons.lock_outline_rounded,
+        title: 'You are not signed in',
+        message: 'Sign in again to view your published meals.',
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('meals')
+          .where('cookId', isEqualTo: user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildMessageCard(
+            icon: Icons.error_outline_rounded,
+            title: 'Meals could not be loaded',
+            message: snapshot.error.toString(),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.large),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final meals = snapshot.data?.docs ?? [];
+
+        meals.sort((first, second) {
+          final firstCreatedAt =
+              first.data()['createdAt'] as Timestamp?;
+          final secondCreatedAt =
+              second.data()['createdAt'] as Timestamp?;
+
+          if (firstCreatedAt == null && secondCreatedAt == null) {
+            return 0;
+          }
+
+          if (firstCreatedAt == null) {
+            return 1;
+          }
+
+          if (secondCreatedAt == null) {
+            return -1;
+          }
+
+          return secondCreatedAt.compareTo(firstCreatedAt);
+        });
+
+        if (meals.isEmpty) {
+          return _buildMessageCard(
+            icon: Icons.restaurant_menu_rounded,
+            title: 'No meals published yet',
+            message: 'Tap Add Today’s Meal to publish your first meal.',
+          );
+        }
+
+        return Column(
+          children: [
+            for (var index = 0; index < meals.length; index++) ...[
+              _buildMealCard(
+                mealId: meals[index].id,
+                data: meals[index].data(),
+              ),
+              if (index < meals.length - 1)
+                const SizedBox(height: AppSpacing.regular),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -131,7 +213,7 @@ class CookDashboardScreen extends StatelessWidget {
               ],
             ),
           ),
-          Switch(
+          const Switch(
             value: true,
             onChanged: null,
           ),
@@ -147,7 +229,7 @@ class CookDashboardScreen extends StatelessWidget {
           child: _buildSummaryCard(
             icon: Icons.receipt_long_rounded,
             title: 'Orders',
-            value: '3',
+            value: '0',
           ),
         ),
         const SizedBox(width: AppSpacing.regular),
@@ -155,7 +237,7 @@ class CookDashboardScreen extends StatelessWidget {
           child: _buildSummaryCard(
             icon: Icons.payments_outlined,
             title: 'Earnings',
-            value: '£74.85',
+            value: '£0.00',
           ),
         ),
       ],
@@ -213,7 +295,49 @@ class CookDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMealCard() {
+  Widget _buildMealCard({
+    required String mealId,
+    required Map<String, dynamic> data,
+  }) {
+    final mealName = data['mealName']?.toString() ?? 'Unnamed meal';
+
+    final priceValue = data['price'];
+    final price = priceValue is num
+        ? priceValue.toDouble()
+        : double.tryParse(priceValue?.toString() ?? '') ?? 0;
+
+    final remainingValue =
+        data['remainingPortions'] ?? data['portions'];
+
+    final remainingPortions = remainingValue is num
+        ? remainingValue.toInt()
+        : int.tryParse(remainingValue?.toString() ?? '') ?? 0;
+
+    final readyTime =
+        data['readyTimeLabel']?.toString() ?? 'Time not set';
+
+    final deliveryAvailable =
+        data['deliveryAvailable'] == true;
+
+    final collectionAvailable =
+        data['collectionAvailable'] == true;
+
+    final active = data['active'] != false;
+
+    final fulfilmentOptions = <String>[];
+
+    if (deliveryAvailable) {
+      fulfilmentOptions.add('Delivery');
+    }
+
+    if (collectionAvailable) {
+      fulfilmentOptions.add('Collection');
+    }
+
+    final fulfilmentText = fulfilmentOptions.isEmpty
+        ? 'No fulfilment option'
+        : fulfilmentOptions.join(' • ');
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.regular),
@@ -222,57 +346,142 @@ class CookDashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 82,
+            height: 82,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(AppRadius.medium),
             ),
-            child: const Text(
-              '🍛',
-              style: TextStyle(fontSize: 36),
+            child: const Icon(
+              Icons.restaurant_rounded,
+              color: AppColors.primary,
+              size: 38,
             ),
           ),
           const SizedBox(width: AppSpacing.regular),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Chicken Biryani',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        mealName,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '£${price.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
-                  '6 portions left',
-                  style: TextStyle(
+                  '$remainingPortions portions left',
+                  style: const TextStyle(
                     color: AppColors.primary,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Ready from 6:00 PM',
-                  style: TextStyle(
+                  'Ready from $readyTime',
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  fulfilmentText,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? Colors.green.withValues(alpha: 0.12)
+                        : Colors.grey.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: Text(
+                    active ? 'Available' : 'Unavailable',
+                    style: TextStyle(
+                      color: active ? Colors.green : Colors.grey,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(
-            Icons.arrow_forward_ios_rounded,
-            size: 16,
-            color: AppColors.textSecondary,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageCard({
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.large),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: 42,
+            color: AppColors.primary,
+          ),
+          const SizedBox(height: AppSpacing.small),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
           ),
         ],
       ),
@@ -302,7 +511,7 @@ class CookDashboardScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Order #1042',
+                  'No incoming orders yet',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
@@ -311,20 +520,13 @@ class CookDashboardScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  '2 × Chicken Biryani',
+                  'New customer orders will appear here.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
                   ),
                 ),
               ],
-            ),
-          ),
-          Text(
-            'New',
-            style: TextStyle(
-              color: Colors.green,
-              fontWeight: FontWeight.w800,
             ),
           ),
         ],

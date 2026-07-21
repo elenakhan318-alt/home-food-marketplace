@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
@@ -25,6 +27,7 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
 
   bool _deliveryAvailable = true;
   bool _collectionAvailable = true;
+  bool _isPublishing = false;
 
   @override
   void dispose() {
@@ -42,11 +45,13 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
       initialTime: _readyTime ?? TimeOfDay.now(),
     );
 
-    if (selectedTime != null) {
-      setState(() {
-        _readyTime = selectedTime;
-      });
+    if (selectedTime == null || !mounted) {
+      return;
     }
+
+    setState(() {
+      _readyTime = selectedTime;
+    });
   }
 
   Future<void> _selectCutOffTime() async {
@@ -55,23 +60,41 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
       initialTime: _cutOffTime ?? TimeOfDay.now(),
     );
 
-    if (selectedTime != null) {
-      setState(() {
-        _cutOffTime = selectedTime;
-      });
-    }
-  }
-
-  void _publishMeal() {
-    if (!_formKey.currentState!.validate()) {
+    if (selectedTime == null || !mounted) {
       return;
     }
+
+    setState(() {
+      _cutOffTime = selectedTime;
+    });
+  }
+
+  Future<void> _publishMeal() async {
+    debugPrint('Publish button pressed');
+
+    FocusScope.of(context).unfocus();
+
+  final formIsValid = _formKey.currentState?.validate() ?? false;
+
+if (!formIsValid) {
+  debugPrint('Form validation failed');
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text(
+        'Please complete all required fields before publishing.',
+      ),
+    ),
+  );
+
+  return;
+}
 
     if (_readyTime == null || _cutOffTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Please choose the ready time and order cut-off time.',
+            'Please choose both the ready time and order cut-off time.',
           ),
         ),
       );
@@ -89,15 +112,118 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${_mealNameController.text} has been published for today.',
-        ),
-      ),
-    );
+    final user = FirebaseAuth.instance.currentUser;
 
-    Navigator.pop(context);
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You must be signed in before publishing a meal.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final price = double.tryParse(_priceController.text.trim());
+    final portions = int.tryParse(_portionsController.text.trim());
+
+    if (price == null || portions == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please enter a valid price and number of portions.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isPublishing = true;
+    });
+
+    try {
+      debugPrint('Saving meal to Firestore');
+
+      await FirebaseFirestore.instance.collection('meals').add({
+        'cookId': user.uid,
+        'mealName': _mealNameController.text.trim(),
+        'price': price,
+        'portions': portions,
+        'remainingPortions': portions,
+        'ingredients': _ingredientsController.text.trim(),
+        'allergens': _allergensController.text.trim(),
+        'readyTime': {
+          'hour': _readyTime!.hour,
+          'minute': _readyTime!.minute,
+        },
+        'cutOffTime': {
+          'hour': _cutOffTime!.hour,
+          'minute': _cutOffTime!.minute,
+        },
+        'readyTimeLabel': _formatTime(_readyTime),
+        'cutOffTimeLabel': _formatTime(_cutOffTime),
+        'deliveryAvailable': _deliveryAvailable,
+        'collectionAvailable': _collectionAvailable,
+        'status': 'available',
+        'active': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('Meal saved successfully');
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${_mealNameController.text.trim()} has been published.',
+          ),
+        ),
+      );
+
+      Navigator.pop(context, true);
+    } on FirebaseException catch (error) {
+      debugPrint('Firebase error code: ${error.code}');
+      debugPrint('Firebase error message: ${error.message}');
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message ??
+                'Firebase could not save the meal. Error: ${error.code}',
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Publishing error: $error');
+      debugPrintStack(stackTrace: stackTrace);
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'The meal could not be published: $error',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPublishing = false;
+        });
+      }
+    }
   }
 
   String _formatTime(TimeOfDay? time) {
@@ -139,6 +265,7 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Please enter a meal name.';
                     }
+
                     return null;
                   },
                 ),
@@ -150,12 +277,15 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
                         controller: _priceController,
                         label: 'Price per portion',
                         hint: '9.95',
-                        keyboardType: const TextInputType.numberWithOptions(
+                        keyboardType:
+                            const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
                         prefixText: '£',
                         validator: (value) {
-                          final price = double.tryParse(value ?? '');
+                          final price = double.tryParse(
+                            value?.trim() ?? '',
+                          );
 
                           if (price == null || price <= 0) {
                             return 'Enter a valid price.';
@@ -173,7 +303,9 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
                         hint: '10',
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          final portions = int.tryParse(value ?? '');
+                          final portions = int.tryParse(
+                            value?.trim() ?? '',
+                          );
 
                           if (portions == null || portions <= 0) {
                             return 'Enter portions.';
@@ -211,6 +343,7 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Please enter the ingredients.';
                     }
+
                     return null;
                   },
                 ),
@@ -224,6 +357,7 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Please enter allergen information.';
                     }
+
                     return null;
                   },
                 ),
@@ -232,9 +366,21 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
                   width: double.infinity,
                   height: 54,
                   child: FilledButton.icon(
-                    onPressed: _publishMeal,
-                    icon: const Icon(Icons.publish_rounded),
-                    label: const Text('Publish Meal for Today'),
+                    onPressed: _isPublishing ? null : _publishMeal,
+                    icon: _isPublishing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.publish_rounded),
+                    label: Text(
+                      _isPublishing
+                          ? 'Publishing...'
+                          : 'Publish Meal for Today',
+                    ),
                   ),
                 ),
               ],
@@ -261,7 +407,9 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
         onTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Photo upload will be connected next.'),
+              content: Text(
+                'Photo upload will be connected next.',
+              ),
             ),
           );
         },
@@ -409,23 +557,31 @@ class _AddTodayMealScreenState extends State<AddTodayMealScreen> {
             contentPadding: EdgeInsets.zero,
             value: _deliveryAvailable,
             title: const Text('Delivery'),
-            subtitle: const Text('You can deliver this meal'),
-            onChanged: (value) {
-              setState(() {
-                _deliveryAvailable = value ?? false;
-              });
-            },
+            subtitle: const Text(
+              'You can deliver this meal',
+            ),
+            onChanged: _isPublishing
+                ? null
+                : (value) {
+                    setState(() {
+                      _deliveryAvailable = value ?? false;
+                    });
+                  },
           ),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             value: _collectionAvailable,
             title: const Text('Collection'),
-            subtitle: const Text('Customer can collect from you'),
-            onChanged: (value) {
-              setState(() {
-                _collectionAvailable = value ?? false;
-              });
-            },
+            subtitle: const Text(
+              'Customer can collect from you',
+            ),
+            onChanged: _isPublishing
+                ? null
+                : (value) {
+                    setState(() {
+                      _collectionAvailable = value ?? false;
+                    });
+                  },
           ),
         ],
       ),

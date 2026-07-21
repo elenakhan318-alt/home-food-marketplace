@@ -10,10 +10,12 @@ class CustomerMainScreen extends StatefulWidget {
   const CustomerMainScreen({super.key});
 
   @override
-  State<CustomerMainScreen> createState() => _CustomerMainScreenState();
+  State<CustomerMainScreen> createState() =>
+      _CustomerMainScreenState();
 }
 
-class _CustomerMainScreenState extends State<CustomerMainScreen> {
+class _CustomerMainScreenState
+    extends State<CustomerMainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = const [
@@ -48,6 +50,7 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
           ),
           NavigationDestination(
             icon: Icon(Icons.search_rounded),
+            selectedIcon: Icon(Icons.search_rounded),
             label: 'Search',
           ),
           NavigationDestination(
